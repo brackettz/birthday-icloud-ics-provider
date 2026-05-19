@@ -243,27 +243,46 @@ def _build_ics(birthdays: list[dict]) -> bytes:
     cal.add("method", "PUBLISH")
 
     now = datetime.now(timezone.utc)
+    today = now.date()
+    # Generate individual events per year so the age is correct each year.
+    # For contacts without a birth year, fall back to a recurring event.
+    year_range = range(today.year - 1, today.year + 10)
 
     for b in sorted(birthdays, key=lambda x: (x["date"].month, x["date"].day)):
-        ev = Event()
         name = b["name"]
         bday: date = b["date"]
+        uid = hashlib.md5(f"{name}-{bday.month:02d}-{bday.day:02d}".encode()).hexdigest()
 
         if b["has_year"] and bday.year > 1900:
-            ev.add("summary", f"Geburtstag {name} (*{bday.year})")
+            description = f"Geboren am {bday.strftime('%-d. %B %Y')}"
+            for yr in year_range:
+                age = yr - bday.year
+                if age < 0:
+                    continue
+                try:
+                    ev_date = date(yr, bday.month, bday.day)
+                except ValueError:
+                    continue  # Feb 29 in non-leap year
+                ev = Event()
+                ev.add("summary", f"Geburtstag {name} ({age})")
+                ev.add("description", description)
+                ev.add("dtstart", ev_date)
+                ev.add("dtend", ev_date + timedelta(days=1))
+                ev.add("transp", "TRANSPARENT")
+                ev.add("dtstamp", now)
+                ev.add("uid", f"{uid}-{yr}@birthday-icloud-ics")
+                cal.add_component(ev)
         else:
+            ev = Event()
             ev.add("summary", f"Geburtstag {name}")
-
-        ev.add("dtstart", bday)
-        ev.add("dtend", bday + timedelta(days=1))
-        ev.add("rrule", {"freq": "yearly"})
-        ev.add("transp", "TRANSPARENT")
-        ev.add("dtstamp", now)
-
-        uid = hashlib.md5(f"{name}-{bday.month:02d}-{bday.day:02d}".encode()).hexdigest()
-        ev.add("uid", f"{uid}@birthday-icloud-ics")
-
-        cal.add_component(ev)
+            ev.add("description", f"Geburtstag: {bday.strftime('%-d. %B')}")
+            ev.add("dtstart", bday)
+            ev.add("dtend", bday + timedelta(days=1))
+            ev.add("rrule", {"freq": "yearly"})
+            ev.add("transp", "TRANSPARENT")
+            ev.add("dtstamp", now)
+            ev.add("uid", f"{uid}@birthday-icloud-ics")
+            cal.add_component(ev)
 
     return cal.to_ical()
 
