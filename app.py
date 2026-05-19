@@ -273,16 +273,21 @@ def _build_ics(birthdays: list[dict]) -> bytes:
                 ev.add("uid", f"{uid}-{yr}@birthday-icloud-ics")
                 cal.add_component(ev)
         else:
-            ev = Event()
-            ev.add("summary", f"Geburtstag {name}")
-            ev.add("description", f"Geburtstag: {bday.strftime('%-d. %B')}")
-            ev.add("dtstart", bday)
-            ev.add("dtend", bday + timedelta(days=1))
-            ev.add("rrule", {"freq": "yearly"})
-            ev.add("transp", "TRANSPARENT")
-            ev.add("dtstamp", now)
-            ev.add("uid", f"{uid}@birthday-icloud-ics")
-            cal.add_component(ev)
+            description = f"Geburtstag: {bday.strftime('%-d. %B')}"
+            for yr in year_range:
+                try:
+                    ev_date = date(yr, bday.month, bday.day)
+                except ValueError:
+                    continue  # Feb 29 in non-leap year
+                ev = Event()
+                ev.add("summary", f"Geburtstag {name}")
+                ev.add("description", description)
+                ev.add("dtstart", ev_date)
+                ev.add("dtend", ev_date + timedelta(days=1))
+                ev.add("transp", "TRANSPARENT")
+                ev.add("dtstamp", now)
+                ev.add("uid", f"{uid}-{yr}@birthday-icloud-ics")
+                cal.add_component(ev)
 
     return cal.to_ical()
 
