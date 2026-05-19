@@ -254,7 +254,7 @@ def _build_ics(birthdays: list[dict]) -> bytes:
         uid = hashlib.md5(f"{name}-{bday.month:02d}-{bday.day:02d}".encode()).hexdigest()
 
         if b["has_year"] and bday.year > 1900:
-            description = f"Geboren am {bday.strftime('%-d. %B %Y')}"
+            description = f"Geboren am {bday.day}.{bday.month}.{bday.year}"
             for yr in year_range:
                 age = yr - bday.year
                 if age < 0:
@@ -273,7 +273,7 @@ def _build_ics(birthdays: list[dict]) -> bytes:
                 ev.add("uid", f"{uid}-{yr}@birthday-icloud-ics")
                 cal.add_component(ev)
         else:
-            description = f"Geburtstag: {bday.strftime('%-d. %B')}"
+            description = f"Geburtstag: {bday.day}.{bday.month}."
             for yr in year_range:
                 try:
                     ev_date = date(yr, bday.month, bday.day)
